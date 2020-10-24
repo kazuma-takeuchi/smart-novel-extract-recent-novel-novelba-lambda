@@ -12,4 +12,8 @@
 
 
 ## 環境変数  
-なし
+| 変数名 | 値 |
+| ---- | ---- |
+| PKEY | scraping-target |
+| SKEY | novelba |
+| TABLE_NAME | control |

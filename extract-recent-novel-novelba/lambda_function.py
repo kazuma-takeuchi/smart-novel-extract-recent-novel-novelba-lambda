@@ -7,9 +7,29 @@ import requests
 import logging
 from urllib.request import urlopen
 
+
 from datetime import datetime
 from bs4 import BeautifulSoup
 from datetime import datetime
+import boto3
+from boto3.dynamodb.conditions import Key
+
+
+from connections import build_client_dynamo
+
+
+PKEY = os.getenv("PKEY")
+SKEY = os.getenv("SKEY")
+TABLE_NAME = os.getenv("TABLE_NAME")
+
+
+def get_info(pkey, skey):
+    table = build_client_dynamo(table_name=TABLE_NAME)
+    info = table.query(
+        KeyConditionExpression = Key("pkey").eq(pkey) & Key("skey").eq(skey)
+    )
+    return info['Items']
+
 
 def get_html(url):
     res = requests.get(url)
@@ -17,6 +37,7 @@ def get_html(url):
         return res.content
     else:
         return None
+
 
 def jst_str2ts_epoch_milli(jst, format="%Y-%m-%d %H:%M:%S"):
     dt = datetime.strptime(jst + "+0900", format + "%z")
@@ -36,8 +57,9 @@ def remove_duplicated_link(links, lastkey, default=False):
     
     
 def lambda_handler(event, context):
-    url = event['url']
-    lastkey = event['lastkey']
+    info = get_info(PKEY, SKEY)
+    url = info['url']
+    lastkey = info['lastkey']
     html = get_html(url).decode('utf-8')
     links = extract_recent_link(html)
     links = remove_duplicated_link(links, lastkey, len(links))
@@ -45,8 +67,8 @@ def lambda_handler(event, context):
         lastkey = links[0]
     return {
         'statusCode': 200,
-        'pkey': event['pkey'],
-        'skey': event['skey'],
+        'pkey': info['pkey'],
+        'skey': info['skey'],
         'lastkey': lastkey,
         'links': links
     }
